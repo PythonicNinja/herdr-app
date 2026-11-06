@@ -436,15 +436,16 @@ impl OptionAsAlt {
     }
 }
 
-/// The quick terminal: `key` shows and hides it from any app, `height` is
-/// its share of the screen, `fullscreen` covers all of it (menu bar and Dock
-/// too), `slide` animates it, `auto_hide` puts it away when it loses the keys.
+/// The quick terminal: `key` shows and hides it from any app, `height` and
+/// `width` are its shares of the screen, `fullscreen` covers all of it
+/// (menu bar and Dock too), `slide` animates it, `auto_hide` puts it away when it loses the keys.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct QuickTerminal {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key: Option<String>,
     pub height: f32,
+    pub width: f32,
     pub fullscreen: bool,
     pub slide: bool,
     pub auto_hide: bool,
@@ -452,7 +453,7 @@ pub struct QuickTerminal {
 
 impl Default for QuickTerminal {
     fn default() -> Self {
-        QuickTerminal { key: None, height: 0.5, fullscreen: false, slide: true, auto_hide: false }
+        QuickTerminal { key: None, height: 0.5, width: 1.0, fullscreen: false, slide: true, auto_hide: false }
     }
 }
 
@@ -647,6 +648,9 @@ impl Settings {
             }
             if !(0.1..=1.0).contains(&q.height) {
                 out.push(format!("quick_terminal.height {} is outside 0.1..1", q.height));
+            }
+            if !(0.1..=1.0).contains(&q.width) {
+                out.push(format!("quick_terminal.width {} is outside 0.1..1", q.width));
             }
         }
         out
@@ -928,15 +932,15 @@ mod tests {
     }
 
     #[test]
-    fn quick_terminal_is_off_by_default_and_validates_its_key_and_height() {
+    fn quick_terminal_is_off_by_default_and_validates_its_key_and_size() {
         let default: Person = serde_json::from_str("{}").unwrap();
         assert_eq!(default.quick_terminal, None);
         assert!(!serde_json::to_value(&default).unwrap().as_object().unwrap().contains_key("quick_terminal"));
         let bare: Person = serde_json::from_str(r#"{"quick_terminal":{}}"#).unwrap();
-        assert_eq!(bare.quick_terminal, Some(QuickTerminal { key: None, height: 0.5, fullscreen: false, slide: true, auto_hide: false }));
-        let person: Person = serde_json::from_str(r#"{"quick_terminal":{"key":"cmd-.","height":0.4,"fullscreen":true,"slide":false,"auto_hide":true}}"#).unwrap();
+        assert_eq!(bare.quick_terminal, Some(QuickTerminal { key: None, height: 0.5, width: 1.0, fullscreen: false, slide: true, auto_hide: false }));
+        let person: Person = serde_json::from_str(r#"{"quick_terminal":{"key":"cmd-.","height":0.4,"width":0.7,"fullscreen":true,"slide":false,"auto_hide":true}}"#).unwrap();
         let settings = Settings::compose(&person, &crate::layout::Look::default(), true);
-        assert_eq!(settings.quick_terminal, Some(QuickTerminal { key: Some("cmd-.".into()), height: 0.4, fullscreen: true, slide: false, auto_hide: true }));
+        assert_eq!(settings.quick_terminal, Some(QuickTerminal { key: Some("cmd-.".into()), height: 0.4, width: 0.7, fullscreen: true, slide: false, auto_hide: true }));
         assert_eq!(serde_json::to_value(&person).unwrap()["quick_terminal"]["key"], "cmd-.");
         let mac_only = usize::from(!cfg!(target_os = "macos"));
         assert_eq!(settings.problems().len(), mac_only);
@@ -944,6 +948,11 @@ mod tests {
             let q = QuickTerminal { key: Some(key.into()), height, ..QuickTerminal::default() };
             let settings = Settings { quick_terminal: Some(q), ..Settings::default() };
             assert_eq!(settings.problems().len(), problems + mac_only, "{key} {height}");
+        }
+        for (width, valid) in [(0.09, false), (0.1, true), (1.0, true), (1.01, false)] {
+            let q = QuickTerminal { width, ..QuickTerminal::default() };
+            let settings = Settings { quick_terminal: Some(q), ..Settings::default() };
+            assert_eq!(settings.problems().len(), usize::from(!valid) + mac_only, "{width}");
         }
     }
 

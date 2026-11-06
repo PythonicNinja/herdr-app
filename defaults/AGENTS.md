@@ -672,16 +672,18 @@ What's about the user, never a look:
   key act as Alt; the other types characters. Changes apply immediately, including layout
   switches. Linux and Windows are unchanged.
 - `quick_terminal`: macOS only, a drop-down terminal like iTerm2's hotkey
-  window: `{ "key": "cmd-.", "height": 0.5, "fullscreen": false, "slide": true, "auto_hide": false }`. The window
+  window: `{ "key": "cmd-.", "height": 0.5, "width": 0.7, "fullscreen": false, "slide": true, "auto_hide": false }`. The window
   drops down from the top of the screen under the pointer, on the current
   Space (also over full screen apps); when it goes up, the app you were in
   has the keys again. `key` (keys.json's form) works from any app and
-  is taken from all of them; without it, `app.toggle` still works. `height` is
-  the share of the screen, 0.1 to 1. `fullscreen` covers the whole screen,
+  is taken from all of them; without it, `app.toggle` still works. `height` and
+  `width` are shares of the available screen, 0.1 to 1. The window is centered;
+  `width` defaults to 1 and updates the visible window without taking focus.
+  `fullscreen` ignores both dimensions and covers the whole screen,
   over the menu bar and the Dock (below the notch on a MacBook with one); `window.maximize` switches it on and off
   (bind it in keys.json). `slide: false` makes it appear and go at once.
   `auto_hide` puts it away when another window takes the keys. Adding or
-  removing `quick_terminal` applies at the next start; `key`, `height`,
+  removing `quick_terminal` applies at the next start; `key`, `height`, `width`,
   `fullscreen`, `slide` and `auto_hide` apply immediately. The window
   has no title bar or buttons and isn't saved to `window.json`.
 - `minimum_contrast`: terminal text contrast ratio, `1` (default) leaves

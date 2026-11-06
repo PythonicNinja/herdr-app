@@ -836,6 +836,7 @@ impl AppWindow {
             mods::note_fonts(cx);
         }
         let s = settings::Settings::compose(&self.person, &self.chrome.look, self.system_dark);
+        let width_changed = matches!((settings::get().quick_terminal.as_ref(), s.quick_terminal.as_ref()), (Some(old), Some(new)) if old.width != new.width);
         let mut problems = s.problems();
         if let Err(e) = crate::quick::set_key(s.quick_terminal.as_ref().and_then(|q| q.key.as_deref())) {
             problems.push(e);
@@ -844,6 +845,9 @@ impl AppWindow {
             self.report_layout(&problems.join("; "));
         }
         if settings::set(s) {
+            if crate::quick::on() && width_changed {
+                crate::quick::width_changed(cx);
+            }
             for term in self.terms.values() {
                 term.view.read(cx).refresh_theme();
             }
