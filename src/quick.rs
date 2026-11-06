@@ -77,6 +77,18 @@ pub fn hide(cx: &App) {
     let _ = cx;
 }
 
+/// Apply a width edit without showing or focusing a hidden panel.
+pub fn width_changed(cx: &App) {
+    #[cfg(target_os = "macos")]
+    later(cx, |panel| {
+        let q = wanted();
+        if !q.fullscreen {
+            panel.resize_width(q.width.clamp(0.1, 1.0) as f64, q.slide);
+        }
+    });
+    let _ = cx;
+}
+
 /// The window lost or got the keys: `auto_hide` puts it away.
 pub fn focus_changed(active: bool, cx: &App) {
     if !active && crate::settings::get().quick_terminal.as_ref().is_some_and(|q| q.auto_hide) {
@@ -97,7 +109,7 @@ fn later(cx: &App, f: fn(gpui_macos::QuickPanel)) {
 #[cfg(target_os = "macos")]
 fn down(panel: gpui_macos::QuickPanel) {
     let q = wanted();
-    panel.show(q.height.clamp(0.1, 1.0) as f64, q.fullscreen, q.slide);
+    panel.show(q.height.clamp(0.1, 1.0) as f64, q.width.clamp(0.1, 1.0) as f64, q.fullscreen, q.slide);
 }
 
 #[cfg(target_os = "macos")]

@@ -141,11 +141,10 @@ impl QuickPanel {
         }
     }
 
-    /// Drops down from the top of the screen under the pointer, `height` of
-    /// it tall, and takes the keys. `full`: the whole screen, over the menu
-    /// bar and the Dock (a pop-up panel sits above both). `animate`: slides
-    /// down, else just appears.
-    pub fn show(self, height: f64, full: bool, animate: bool) {
+    /// Drops down from the top of the screen under the pointer, sized to
+    /// `height` and `width` shares of it, and takes the keys. `full`: the
+    /// whole screen, over the menu bar and the Dock. `animate`: slides down.
+    pub fn show(self, height: f64, width: f64, full: bool, animate: bool) {
         unsafe {
             let app: id = msg_send![class!(NSApplication), sharedApplication];
             let () = msg_send![class!(NSObject), cancelPreviousPerformRequestsWithTarget: self.window selector: sel!(orderOut:) object: nil];
@@ -153,10 +152,10 @@ impl QuickPanel {
             let () = msg_send![app, unhideWithoutActivation];
             let area = screen_under_pointer(full);
             let h = if full { area.size.height } else { (area.size.height * height).round() };
-            let to = NSRect::new(
+            let to = width_frame(area, NSRect::new(
                 NSPoint::new(area.origin.x, area.origin.y + area.size.height - h),
                 NSSize::new(area.size.width, h),
-            );
+            ), if full { 1.0 } else { width });
             let visible: BOOL = msg_send![self.window, isVisible];
             if !animate {
                 let () = msg_send![self.window, setFrame: to display: YES];
@@ -169,6 +168,25 @@ impl QuickPanel {
             let _: BOOL = msg_send![self.window, makeFirstResponder: self.view];
             if animate {
                 slide(self.window, to);
+            }
+        }
+    }
+
+    /// Resize a visible panel on its current screen without taking focus.
+    pub fn resize_width(self, width: f64, animate: bool) {
+        unsafe {
+            let visible: BOOL = msg_send![self.window, isVisible];
+            let screen: id = msg_send![self.window, screen];
+            if visible == NO || screen.is_null() {
+                return;
+            }
+            let area: NSRect = msg_send![screen, visibleFrame];
+            let frame: NSRect = msg_send![self.window, frame];
+            let to = width_frame(area, frame, width);
+            if animate {
+                slide(self.window, to);
+            } else {
+                let () = msg_send![self.window, setFrame: to display: YES];
             }
         }
     }
@@ -197,6 +215,12 @@ impl QuickPanel {
             }
         }
     }
+}
+
+fn width_frame(area: NSRect, mut frame: NSRect, width: f64) -> NSRect {
+    frame.size.width = (area.size.width * width).round();
+    frame.origin.x = area.origin.x + (area.size.width - frame.size.width) / 2.0;
+    frame
 }
 
 /// Whether Herdr is the app in front (`NSApp.isActive` also says yes while
@@ -267,5 +291,20 @@ unsafe fn area(screen: id, full: bool) -> NSRect {
             f.size.height -= insets.top;
         }
         f
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn width_centers_on_the_visible_area_without_changing_height() {
+        let area = NSRect::new(NSPoint::new(-1920.0, 30.0), NSSize::new(1800.0, 1000.0));
+        let frame = NSRect::new(NSPoint::new(-1920.0, 530.0), NSSize::new(1800.0, 500.0));
+        let narrow = width_frame(area, frame, 0.7);
+        assert_eq!((narrow.origin.x, narrow.origin.y, narrow.size.width, narrow.size.height), (-1650.0, 530.0, 1260.0, 500.0));
+        let full = width_frame(area, frame, 1.0);
+        assert_eq!((full.origin.x, full.size.width), (-1920.0, 1800.0));
     }
 }
